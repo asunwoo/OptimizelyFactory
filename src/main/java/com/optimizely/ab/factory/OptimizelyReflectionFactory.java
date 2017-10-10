@@ -1,36 +1,28 @@
 package com.optimizely.ab.factory;
 
-import java.lang.reflect.*;
-
 import com.optimizely.ab.Optimizely;
 import com.optimizely.ab.config.Variation;
 import com.optimizely.ab.config.parser.ConfigParseException;
 import com.optimizely.ab.event.AsyncEventHandler;
 import com.optimizely.ab.event.EventHandler;
 
-import com.optimizely.ab.factory.samplesortclasses.ProductSort;
-import com.optimizely.ab.factory.samplesortclasses.CategoryProductSort;
-import com.optimizely.ab.factory.samplesortclasses.NameProductSort;
-import com.optimizely.ab.factory.samplesortclasses.PriceProductSort;
-
-import java.net.URL;
-
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.IOException;
-import java.io.BufferedReader;
-
-import java.util.stream.Stream;
-
+import java.lang.reflect.Constructor;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 /**
  * Created by asunwoo on 8/16/17.
  */
-public class OptimizelyFactory {
+public class OptimizelyReflectionFactory<T> {
     private String dataFile = ""; //instance variable to hold the datafile
+    private String packageName = ""; //instance variable to hold the package name of classes
     private EventHandler eventHandler; //Optimizely object responsible for dispatching events back to Optimizely
     private Optimizely optimizelyClient; //Optimizely client for determining variations and tracking events
 
@@ -40,7 +32,7 @@ public class OptimizelyFactory {
      * through initializeOptimizely
      * @param dataFile
      */
-    public OptimizelyFactory(){
+    public OptimizelyReflectionFactory(){
         this.eventHandler = new AsyncEventHandler(20000, 1);
     }
 
@@ -57,9 +49,9 @@ public class OptimizelyFactory {
         //Load the full data file either from a local file or from
         //Optimizely ex: https://cdn.optimizely.com/json/1234567890.json
         if(dataFile.startsWith("http")) {
-            this.dataFile = OptimizelyFactory.loadRemoteDataFile(dataFile);
+            this.dataFile = OptimizelyReflectionFactory.loadRemoteDataFile(dataFile);
         } else {
-            this.dataFile = OptimizelyFactory.loadLocalDataFile(dataFile);
+            this.dataFile = OptimizelyReflectionFactory.loadLocalDataFile(dataFile);
         }
         this.optimizelyClient = createOptimizelyClient(this.dataFile);
     }
@@ -84,6 +76,18 @@ public class OptimizelyFactory {
         return optimizelyClient;
     }
 
+    public void setPackageName(String packageName) {
+        this.packageName = packageName;
+    }
+
+    /**
+     * Method for loading the Optimizely data file from Optimizely.
+     * ex: https://cdn.optimizely.com/json/8410977336.json
+     * @param urlString
+     * URL of datafile
+     * @return
+     * The Optimizely data file as a string.
+     */
     private static String loadRemoteDataFile(String urlString){
         URL url = null;
         InputStream in = null;
@@ -156,19 +160,51 @@ public class OptimizelyFactory {
      * @param userId
      * @return
      */
-    public ProductSort getExperimentImpl(String experimentName, String userId){
+    public T getExperimentImpl(String experimentName, String userId){
         Variation variation = this.optimizelyClient.activate(experimentName, userId);
 
-        ProductSort retobj = null;
+        T retobj = null;
+        try {
+            String className = this.packageName + "." + variation.getKey();
+            Class cls = Class.forName(className);
 
-        if(variation.getKey().equals("Circle")){
-            retobj = new CategoryProductSort();
-        } else if(variation.getKey().equals("Square")){
-            retobj = new NameProductSort();
-        } else if(variation.getKey().equals("Triangle")){
-            retobj = new PriceProductSort();
+            Class partypes[] = new Class[0];
+            Constructor ct = cls.getConstructor(partypes);
+            retobj = (T)ct.newInstance();
         }
-
+        catch (Throwable e) {
+            System.err.println(e);
+            e.printStackTrace();
+            return null;
+        }
         return retobj;
     }
+
+    public T getExperimentImpl(Object[] constructorParameters, String experimentName, String userId){
+        Variation variation = this.optimizelyClient.activate(experimentName, userId);
+
+        T retobj = null;
+        try {
+            String className = this.packageName + "." + variation.getKey();
+
+            Class cls = Class.forName(className);
+
+            int size = constructorParameters.length;
+            Class parameterTypes[] = new Class[size];
+
+            for(int i=0; i<size; i++){
+                parameterTypes[i] = constructorParameters[i].getClass();
+            }
+
+            Constructor ct = cls.getConstructor(parameterTypes);
+            retobj = (T)ct.newInstance(constructorParameters);
+        }
+        catch (Throwable e) {
+            System.err.println(e);
+            e.printStackTrace();
+            return null;
+        }
+        return retobj;
+    }
+
 }

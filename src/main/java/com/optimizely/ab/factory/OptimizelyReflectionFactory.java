@@ -31,8 +31,8 @@ public class OptimizelyReflectionFactory<T> {
      * Optimizely specific components still need to be initialized.
      * Parent of objects to be constructed
      * are meant to be specified through generics.
-     * ex: OptimizelyReflectionFactory<Shape> optimizelyFactory =
-     * new OptimizelyReflectionFactory<Shape>();
+     * ex: OptimizelyReflectionFactory<ProductSort> optimizelyFactory =
+     * new OptimizelyReflectionFactory<ProductSort>();
      * through initializeOptimizely
      */
     public OptimizelyReflectionFactory(){
@@ -42,8 +42,8 @@ public class OptimizelyReflectionFactory<T> {
     /**
      * Public constructor that includes datafile
      * initilization.
-     * ex: OptimizelyReflectionFactory<Shape> optimizelyFactory =
-     * new OptimizelyReflectionFactory<Shape>(dataFilePath);
+     * ex: OptimizelyReflectionFactory<ProductSort> optimizelyFactory =
+     * new OptimizelyReflectionFactory<ProductSort>(dataFilePath);
      * @param dataFilePath
      */
     public OptimizelyReflectionFactory(String dataFilePath){

@@ -176,11 +176,11 @@ public class OptimizelyFactory {
 
         ProductSort retobj = null;
 
-        if(variation.getKey().equals("Circle")){
+        if(variation.getKey().equals("CategoryProductSort")){
             retobj = new CategoryProductSort();
-        } else if(variation.getKey().equals("Square")){
+        } else if(variation.getKey().equals("NameProductSort")){
             retobj = new NameProductSort();
-        } else if(variation.getKey().equals("Triangle")){
+        } else if(variation.getKey().equals("PriceProductSort")){
             retobj = new PriceProductSort();
         }
 

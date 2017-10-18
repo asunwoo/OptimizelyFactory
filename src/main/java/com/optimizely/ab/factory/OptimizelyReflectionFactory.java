@@ -27,13 +27,28 @@ public class OptimizelyReflectionFactory<T> {
     private Optimizely optimizelyClient; //Optimizely client for determining variations and tracking events
 
     /**
-     * Public constructor the after construction
-     * Optimizely specific components still need to be initialized
+     * Public constructor.  After construction
+     * Optimizely specific components still need to be initialized.
+     * Parent of objects to be constructed
+     * are meant to be specified through generics.
+     * ex: OptimizelyReflectionFactory<Shape> optimizelyFactory =
+     * new OptimizelyReflectionFactory<Shape>();
      * through initializeOptimizely
-     * @param dataFile
      */
     public OptimizelyReflectionFactory(){
         this.eventHandler = new AsyncEventHandler(20000, 1);
+    }
+
+    /**
+     * Public constructor that includes datafile
+     * initilization.
+     * ex: OptimizelyReflectionFactory<Shape> optimizelyFactory =
+     * new OptimizelyReflectionFactory<Shape>(dataFilePath);
+     * @param dataFilePath
+     */
+    public OptimizelyReflectionFactory(String dataFilePath){
+        this.eventHandler = new AsyncEventHandler(20000, 1);
+        this.initializeOptimizely(dataFilePath);
     }
 
     /**
@@ -43,32 +58,31 @@ public class OptimizelyReflectionFactory<T> {
      * Ex. https://cdn.optimizely.com/json/1234567890.json
      * or
      * /usr/home/1234567890.json
-     * @param dataFile
+     * @param dataFilePath
      */
-    public void initializeOptimizely(String dataFile){
+    public void initializeOptimizely(String dataFilePath){
         //Load the full data file either from a local file or from
         //Optimizely ex: https://cdn.optimizely.com/json/1234567890.json
-        if(dataFile.startsWith("http")) {
-            this.dataFile = OptimizelyReflectionFactory.loadRemoteDataFile(dataFile);
+        if(dataFilePath.startsWith("http")) {
+            this.dataFile = OptimizelyReflectionFactory.loadRemoteDataFile(dataFilePath);
         } else {
-            this.dataFile = OptimizelyReflectionFactory.loadLocalDataFile(dataFile);
+            this.dataFile = OptimizelyReflectionFactory.loadLocalDataFile(dataFilePath);
         }
-        this.optimizelyClient = createOptimizelyClient(this.dataFile);
+        this.optimizelyClient = createOptimizelyClient();
     }
 
     /**
      * Used to create an optimizely client.
      * This object is needed for user routing to variations and for
      * metric tracking.
-     * @param dataFile
      * @return
      */
-    private Optimizely createOptimizelyClient(String dataFile){
+    private Optimizely createOptimizelyClient(){
         Optimizely optimizelyClient = null;
 
         try {
             // Initialize an Optimizely client
-            optimizelyClient = Optimizely.builder(dataFile, eventHandler).build();
+            optimizelyClient = Optimizely.builder(this.dataFile, eventHandler).build();
         } catch (ConfigParseException e) {
             e.printStackTrace();
         }
@@ -119,9 +133,9 @@ public class OptimizelyReflectionFactory<T> {
     }
 
     /**
-     * Method for loading the Optimizely data file from Optimizely.
+     * Method for loading the Optimizely data file from a local file.
      * ex: /Users/<User>/workspace/Optimizely/<ex>.json
-     * @param urlString
+     * @param pathString
      * local path of datafile
      * @return
      * The Optimizely data file as a string.
@@ -144,8 +158,7 @@ public class OptimizelyReflectionFactory<T> {
     }
 
     /**
-     * Method to arbitrarily determine if the user had a tracked event.
-     * Using a 50/50 split for having an event
+     * Convenience method for tracking success metrics for experiments
      * @param eventName
      * @param userId
      * User to determine event occurence for.
@@ -155,17 +168,21 @@ public class OptimizelyReflectionFactory<T> {
     }
 
     /**
-     *
+     * Factory method for retrieving the appropriate implementation
+     * given the variation that the given userId falls into.
+     * Conditional will need to be updated as new variations are introduced.
      * @param experimentName
      * @param userId
      * @return
      */
-    public T getExperimentImpl(String experimentName, String userId){
+    private T getExperimentImpl(String experimentName, String userId){
         Variation variation = this.optimizelyClient.activate(experimentName, userId);
 
+        String className = this.packageName + "." + variation.getKey();
+
         T retobj = null;
+
         try {
-            String className = this.packageName + "." + variation.getKey();
             Class cls = Class.forName(className);
 
             Class partypes[] = new Class[0];
@@ -180,13 +197,52 @@ public class OptimizelyReflectionFactory<T> {
         return retobj;
     }
 
-    public T getExperimentImpl(Object[] constructorParameters, String experimentName, String userId){
+    /**
+     * Factory method for retrieving the appropriate implementation
+     * given the variation that the given userId falls into.
+     * Conditional will need to be updated as new variations are introduced.
+     * @param featureFlag
+     * @param featureVariable
+     * @param userId
+     * @return
+     */
+//    public T getVariableImpl(String featureFlag, String featureVariable, String userId){
+//        String className = this.optimizelyClient.getFeatureVariableString(featureFlag, featureVariable, userId);
+//
+//        T retobj = null;
+//
+//        try {
+//            Class cls = Class.forName(className);
+//
+//            Class partypes[] = new Class[0];
+//            Constructor ct = cls.getConstructor(partypes);
+//            retobj = (T)ct.newInstance();
+//        }
+//        catch (Throwable e) {
+//            System.err.println(e);
+//            e.printStackTrace();
+//            return null;
+//        }
+//        return retobj;
+//    }
+
+    /**
+     * Factory method for retrieving the appropriate implementation
+     * given the variation that the given userId falls into.  This version
+     * accounts for constructors that may require a set of arguments passed in.
+     * This factory method only supports Object constructor arguments.
+     * Conditional will need to be updated as new variations are introduced.
+     * @param experimentName
+     * @param userId
+     * @return
+     */
+    private T getExperimentImpl(Object[] constructorParameters, String experimentName, String userId){
         Variation variation = this.optimizelyClient.activate(experimentName, userId);
+
+        String className = this.packageName + "." + variation.getKey();
 
         T retobj = null;
         try {
-            String className = this.packageName + "." + variation.getKey();
-
             Class cls = Class.forName(className);
 
             int size = constructorParameters.length;

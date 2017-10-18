@@ -1,7 +1,5 @@
 package com.optimizely.ab.factory;
 
-import java.lang.reflect.*;
-
 import com.optimizely.ab.Optimizely;
 import com.optimizely.ab.config.Variation;
 import com.optimizely.ab.config.parser.ConfigParseException;
@@ -35,13 +33,22 @@ public class OptimizelyFactory {
     private Optimizely optimizelyClient; //Optimizely client for determining variations and tracking events
 
     /**
-     * Public constructor the after construction
+     * Public constructor.  After construction
      * Optimizely specific components still need to be initialized
      * through initializeOptimizely
-     * @param dataFile
      */
     public OptimizelyFactory(){
         this.eventHandler = new AsyncEventHandler(20000, 1);
+    }
+
+    /**
+     * Public constructor that includes datafile
+     * initilization.
+     * @param dataFilePath
+     */
+    public OptimizelyFactory(String dataFilePath){
+        this.eventHandler = new AsyncEventHandler(20000, 1);
+        this.initializeOptimizely(dataFilePath);
     }
 
     /**
@@ -51,32 +58,31 @@ public class OptimizelyFactory {
      * Ex. https://cdn.optimizely.com/json/1234567890.json
      * or
      * /usr/home/1234567890.json
-     * @param dataFile
+     * @param dataFilePath
      */
-    public void initializeOptimizely(String dataFile){
+    public void initializeOptimizely(String dataFilePath){
         //Load the full data file either from a local file or from
         //Optimizely ex: https://cdn.optimizely.com/json/1234567890.json
-        if(dataFile.startsWith("http")) {
-            this.dataFile = OptimizelyFactory.loadRemoteDataFile(dataFile);
+        if(dataFilePath.startsWith("http")) {
+            this.dataFile = OptimizelyFactory.loadRemoteDataFile(dataFilePath);
         } else {
-            this.dataFile = OptimizelyFactory.loadLocalDataFile(dataFile);
+            this.dataFile = OptimizelyFactory.loadLocalDataFile(dataFilePath);
         }
-        this.optimizelyClient = createOptimizelyClient(this.dataFile);
+        this.optimizelyClient = createOptimizelyClient();
     }
 
     /**
      * Used to create an optimizely client.
      * This object is needed for user routing to variations and for
      * metric tracking.
-     * @param dataFile
      * @return
      */
-    private Optimizely createOptimizelyClient(String dataFile){
+    private Optimizely createOptimizelyClient(){
         Optimizely optimizelyClient = null;
 
         try {
             // Initialize an Optimizely client
-            optimizelyClient = Optimizely.builder(dataFile, eventHandler).build();
+            optimizelyClient = Optimizely.builder(this.dataFile, eventHandler).build();
         } catch (ConfigParseException e) {
             e.printStackTrace();
         }
@@ -84,14 +90,22 @@ public class OptimizelyFactory {
         return optimizelyClient;
     }
 
-    private static String loadRemoteDataFile(String urlString){
+    /**
+     * Method for loading the Optimizely data file from Optimizely.
+     * ex: https://cdn.optimizely.com/json/8410977336.json
+     * @param pathString
+     * URL of datafile
+     * @return
+     * The Optimizely data file as a string.
+     */
+    private static String loadRemoteDataFile(String pathString){
         URL url = null;
         InputStream in = null;
 
         StringBuilder sb = new StringBuilder();
 
         try {
-            url = new URL(urlString);
+            url = new URL(pathString);
             in = url.openStream();
             InputStreamReader inputStream = new InputStreamReader( in );
             BufferedReader buf = new BufferedReader( inputStream );
@@ -115,9 +129,9 @@ public class OptimizelyFactory {
     }
 
     /**
-     * Method for loading the Optimizely data file from Optimizely.
+     * Method for loading the Optimizely data file from a local file.
      * ex: /Users/<User>/workspace/Optimizely/<ex>.json
-     * @param urlString
+     * @param pathString
      * local path of datafile
      * @return
      * The Optimizely data file as a string.
@@ -140,8 +154,7 @@ public class OptimizelyFactory {
     }
 
     /**
-     * Method to arbitrarily determine if the user had a tracked event.
-     * Using a 50/50 split for having an event
+     * Convenience method for tracking success metrics for experiments
      * @param eventName
      * @param userId
      * User to determine event occurence for.
@@ -151,7 +164,9 @@ public class OptimizelyFactory {
     }
 
     /**
-     *
+     * Factory method for retrieving the appropriate implementation
+     * givent the variation that the given userId falls into.
+     * Conditional will need to be updated as new variations are introduced.
      * @param experimentName
      * @param userId
      * @return

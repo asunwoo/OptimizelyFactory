@@ -170,12 +170,13 @@ public class OptimizelyReflectionFactory<T> {
     /**
      * Factory method for retrieving the appropriate implementation
      * given the variation that the given userId falls into.
-     * Conditional will need to be updated as new variations are introduced.
+     * Method uses reflection to create a given class from the name of a variation.
+     * Note that this method requires packageName is set.
      * @param experimentName
      * @param userId
      * @return
      */
-    private T getExperimentImpl(String experimentName, String userId){
+    public T getExperimentImpl(String experimentName, String userId){
         Variation variation = this.optimizelyClient.activate(experimentName, userId);
 
         String className = this.packageName + "." + variation.getKey();
@@ -200,7 +201,8 @@ public class OptimizelyReflectionFactory<T> {
     /**
      * Factory method for retrieving the appropriate implementation
      * given the variation that the given userId falls into.
-     * Conditional will need to be updated as new variations are introduced.
+     * Method uses reflection to create a given class from the value of the given
+     * Feature Variable.
      * @param featureFlag
      * @param featureVariable
      * @param userId
@@ -231,7 +233,6 @@ public class OptimizelyReflectionFactory<T> {
      * given the variation that the given userId falls into.  This version
      * accounts for constructors that may require a set of arguments passed in.
      * This factory method only supports Object constructor arguments.
-     * Conditional will need to be updated as new variations are introduced.
      * @param experimentName
      * @param userId
      * @return

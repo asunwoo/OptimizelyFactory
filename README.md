@@ -25,4 +25,5 @@ This will result in a jar in the target directory.
 ## Running 
 
 To run the command line example:
+
 java -jar target/optimizely-1.0-jar-with-dependencies.jar <location of the datafile>
